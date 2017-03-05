@@ -53,8 +53,8 @@ pkg_download() {
             vecho "Downloaded $url"
             return;
         fi
-        vecho "Could not download $url"
     done
+    echo "Could not download $url" >&2
     false
 }
 
