@@ -34,7 +34,8 @@ pkg_push() {
     name="$1"
     pkg="$(pkg_localfile "$name")"
     remotepkg="$(pkg_remotefile "$RUPM_SSHPUSH" "$name")"
-    
+
+    vecho "Pushing $pkg to $remotepkg"
     if ! scp "$pkg" "$remotepkg"; then
         echo "Could not upload packages to repo." >&2
         exit
@@ -86,6 +87,7 @@ pkg_assemble() (
     cd "$workingdir"
     if jtar "$RUPM_RECIPES/$1.json" > "$tmpfile"; then
         chmod +r "$tmpfile"
+        mkdir -p "$RUPM_PACKAGES"
         mv "$tmpfile" "$RUPM_PACKAGES/$1.$RUPM_EXTENSION"
     else
         echo "Error: could not create package for $1." >&2
@@ -99,7 +101,7 @@ while getopts SC:APvc opt; do
         ;;
     c)
         vecho "Removing package files from cache"
-        rm -r "$RUPM_PACKAGES"
+        rm -rf "$RUPM_PACKAGES"
         ;;
     S)
         shift "$(($OPTIND - 1))"
