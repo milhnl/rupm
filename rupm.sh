@@ -6,12 +6,14 @@ RUPM_EXTENSION="${RUPM_EXTENSION:-tar}"
 
 workingdir="$HOME"
 arch="${ARCH:-$(uname -m)}"
-verbose="0"
+verbosity="2"
 ext="$RUPM_EXTENSION"
 
-vecho() {
-    [ "${verbose:-0}" = "0" ] || echo "$@" >&2
-}
+debug() { [ "$verbosity" -ge "4" ] && printf '%s\n' "$*" >&2; }
+info() { [ "$verbosity" -ge "3" ] && printf '%s\n' "$*" >&2; }
+warn() { [ "$verbosity" -ge "2" ] && printf '%s\n' "$*" >&2; }
+err() { [ "$verbosity" -ge "1" ] && printf '%s\n' "$*" >&2; }
+die() { [ "$verbosity" -ge "0" ] && printf '%s\n' "$*" >&2; exit 1; }
 
 foreach() {
     func="$1"; shift;
@@ -35,11 +37,8 @@ pkg_push() {
     pkg="$(pkg_localfile "$name")"
     remotepkg="$(pkg_remotefile "$RUPM_SSHPUSH" "$name")"
 
-    vecho "Pushing $pkg to $remotepkg"
-    if ! scp "$pkg" "$remotepkg"; then
-        echo "Could not upload packages to repo." >&2
-        exit
-    fi
+    debug "$name uploading to $remotepkg"
+    scp "$pkg" "$remotepkg" || die "Could not upload package(s) to repo."
 }
 
 pkg_download() {
@@ -47,15 +46,16 @@ pkg_download() {
     pkg="$(pkg_localfile "$name")"
     
     mkdir -p "$RUPM_PACKAGES"
+    info "$name downloading."
     for repo in $RUPM_MIRRORLIST; do
         url="$(pkg_remotefile "$repo" "$name")"
-        [ "${verbose:-0}" = "0" ] && curlopts="-s"
-        if curl -N $curlopts -# --fail "$url" > "$pkg"; then
-            vecho "Downloaded $url"
-            return;
+        [ "$verbosity" -ge "3" ] || curlopts="-s"
+        if curl -N $curlopts -\# --fail "$url" > "$pkg"; then
+            debug "$name downloaded from $url"
+            return 0;
         fi
     done
-    echo "Could not download $url" >&2
+    warn "$name could not be downloaded."
     false
 }
 
@@ -68,8 +68,7 @@ pkg_get() {
     elif pkg_download "$name"; then
         echo "$pkg"
     else
-        echo "Error: Could not download $1." >&2
-        exit 1
+        err "$name is not available."
     fi
 }
 
@@ -77,7 +76,7 @@ pkg_install() {
     name="$1"
     
     if pkg_get "$name" >/dev/null; then
-        vecho "Installing $name"
+        debug "$name is installing"
         tarxenv < "$(pkg_get "$name")"
     fi
 }
@@ -90,17 +89,20 @@ pkg_assemble() (
         mkdir -p "$RUPM_PACKAGES"
         mv "$tmpfile" "$RUPM_PACKAGES/$1.$RUPM_EXTENSION"
     else
-        echo "Error: could not create package for $1." >&2
+        err "$name could not be assembled into a package."
     fi
 )
 
 while getopts SC:APvc opt; do
     case $opt in
     v)
-        verbose="1"
+        verbosity="$(($verbosity + 1))"
+        ;;
+    q)
+        verbosity="$(($verbosity - 1))"
         ;;
     c)
-        vecho "Removing package files from cache"
+        info "Removing package files from cache"
         rm -rf "$RUPM_PACKAGES"
         ;;
     S)
@@ -109,7 +111,7 @@ while getopts SC:APvc opt; do
         ;;
     C)
         workingdir="$OPTARG"
-        vecho "Creating packages from $workingdir"
+        info "Creating packages from $workingdir"
         ;;
     A)
         shift "$(($OPTIND - 1))"
