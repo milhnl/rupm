@@ -94,34 +94,28 @@ pkg_assemble() (
     fi
 )
 
+pkg_clean() {
+    name="$1"
+
+    info "$name is removed from cache."
+    rm -f "$(pkg_localfile "$name")"
+    rmdir --ignore-fail-on-non-empty "$RUPM_PACKAGES"
+}
+
+tasks=""
 while getopts SC:APvc opt; do
     case $opt in
-    v)
-        verbosity="$(($verbosity + 1))"
-        ;;
-    q)
-        verbosity="$(($verbosity - 1))"
-        ;;
-    c)
-        info "Removing package files from cache"
-        rm -rf "$RUPM_PACKAGES"
-        ;;
-    S)
-        shift "$(($OPTIND - 1))"
-        foreach pkg_install "$@"
-        ;;
-    C)
-        workingdir="$OPTARG"
-        info "Creating packages from $workingdir"
-        ;;
-    A)
-        shift "$(($OPTIND - 1))"
-        foreach pkg_assemble "$@"
-        ;;
-    P)
-        shift "$(($OPTIND - 1))"
-        foreach pkg_push "$@"
-        ;;
+    v) verbosity="$(($verbosity + 1))" ;;
+    q) verbosity="$(($verbosity - 1))" ;;
+    C) workingdir="$OPTARG"; info "Creating packages from $workingdir" ;;
+    c) tasks="$tasks pkg_clean" ;;
+    S) tasks="$tasks pkg_install" ;;
+    A) tasks="$tasks pkg_assemble" ;;
+    P) tasks="$tasks pkg_push" ;;
     esac
+done
+shift "$(($OPTIND - 1))"
+for task in $tasks; do
+    foreach $task "$@"
 done
 
