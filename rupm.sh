@@ -63,9 +63,10 @@ pkg_get() {
     name="$1"
     pkg="$(pkg_localfile "$name")"
     
-    if [ -f "$pkg" ]; then
+    if pkg_download "$name"; then
         echo "$pkg"
-    elif pkg_download "$name"; then
+    elif [ -f "$pkg" ]; then
+        warn "$name will be installed using a cached package."
         echo "$pkg"
     else
         err "$name is not available."
@@ -77,7 +78,7 @@ pkg_install() {
     
     if pkg_get "$name" >/dev/null; then
         debug "$name is installing"
-        tarxenv < "$(pkg_get "$name")"
+        tarxenv < "$(pkg_localfile "$name")"
     fi
 }
 
