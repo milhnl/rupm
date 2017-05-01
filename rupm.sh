@@ -6,14 +6,15 @@ RUPM_EXTENSION="${RUPM_EXTENSION:-tar}"
 
 workingdir="$HOME"
 arch="${ARCH:-$(uname -m)}"
-verbosity="2"
+verbosity="0"
 ext="$RUPM_EXTENSION"
 
-debug() { [ "$verbosity" -ge "4" ] && printf '%s\n' "$*" >&2; }
-info() { [ "$verbosity" -ge "3" ] && printf '%s\n' "$*" >&2; }
-warn() { [ "$verbosity" -ge "2" ] && printf '%s\n' "$*" >&2; }
-err() { [ "$verbosity" -ge "1" ] && printf '%s\n' "$*" >&2; }
-die() { [ "$verbosity" -ge "0" ] && printf '%s\n' "$*" >&2; exit 1; }
+trace() { [ "$verbosity" -ge "3" ] && printf '%s\n' "$*" >&2; }
+debug() { [ "$verbosity" -ge "2" ] && printf '%s\n' "$*" >&2; }
+info() { [ "$verbosity" -ge "1" ] && printf '%s\n' "$*" >&2; }
+warn() { [ "$verbosity" -ge "0" ] && printf '%s\n' "$*" >&2; }
+err() { [ "$verbosity" -ge "-1" ] && printf '%s\n' "$*" >&2; }
+die() { [ "$verbosity" -ge "-2" ] && printf '%s\n' "$*" >&2; exit 1; }
 
 foreach() {
     func="$1"; shift;
@@ -103,7 +104,7 @@ pkg_clean() {
 }
 
 tasks=""
-while getopts SC:APvc opt; do
+while getopts vqC:cSAP opt; do
     case $opt in
     v) verbosity="$(($verbosity + 1))" ;;
     q) verbosity="$(($verbosity - 1))" ;;
