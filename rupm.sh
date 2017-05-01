@@ -72,7 +72,7 @@ pkg_download() {
     for repo in $RUPM_MIRRORLIST; do
         url="$(pkg_remotefile "$repo" "$name")"
         [ "$verbosity" -ge "3" ] || curlopts="-s"
-        if curl -N $curlopts -\# --fail "$url" > "$pkg"; then
+        if curl -N $curlopts --progress-bar --fail "$url" -o "$pkg"; then
             debug "$name downloaded from $url"
             return 0;
         fi
@@ -84,24 +84,18 @@ pkg_download() {
 pkg_get() {
     name="$1"
     pkg="$(pkg_localfile "$name")"
-    
-    if pkg_download "$name"; then
-        echo "$pkg"
-    elif [ -f "$pkg" ]; then
-        warn "$name will be installed using a cached package."
-        echo "$pkg"
-    else
-        err "$name is not available."
-    fi
+
+    pkg_download "$name" \
+        || ( [ -f "$pkg" ] \
+            && warn "$name will be installed using a cached package." ) \
+        || die "$name is not available.";
 }
 
 pkg_install() {
     name="$1"
     
-    if pkg_get "$name" >/dev/null; then
-        debug "$name is installing"
-        tarxenv < "$(pkg_localfile "$name")"
-    fi
+    debug "$name is installing"
+    tarxenv < "$(pkg_localfile "$name")"
 }
 
 pkg_assemble() {
@@ -144,7 +138,7 @@ while getopts vqC:cSAP opt; do
     q) verbosity="$(($verbosity - 1))" ;;
     C) workingdir="$OPTARG"; info "Creating packages from $workingdir" ;;
     c) tasks="$tasks pkg_clean" ;;
-    S) tasks="$tasks pkg_install" ;;
+    S) tasks="$tasks pkg_get pkg_install" ;;
     A) tasks="$tasks pkg_assemble" ;;
     P) tasks="$tasks pkg_push" ;;
     esac
