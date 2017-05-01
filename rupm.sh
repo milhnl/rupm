@@ -126,9 +126,8 @@ pkg_assemble() {
 pkg_clean() {
     name="$1"
 
-    info "$name is removed from cache."
-    rm -f "$(pkg_localfile "$name")"
-    rmdir --ignore-fail-on-non-empty "$RUPM_PACKAGES"
+    rm "$(pkg_localfile "$name")" 2>/dev/null&&info "$name cleaned from cache."
+    rmdir --ignore-fail-on-non-empty "$RUPM_PACKAGES" 2>/dev/null || true
 }
 
 tasks=""
