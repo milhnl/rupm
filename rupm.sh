@@ -1,7 +1,16 @@
 #!/usr/bin/env sh
 #rupm - relocatable user package manager
-RUPM_PACKAGES="${RUPM_PACKAGES:-${XDG_DATA_HOME:-$HOME/.local/share}/rupm/packages}"
-RUPM_RECIPES="${RUPM_RECIPES:-${XDG_CONFIG_HOME:-$HOME/.config}/rupm/recipes}"
+
+#Default values for used environment variables
+export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+export XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
+export PREFIX="${PREFIX:-$HOME/.local}"
+export BINDIR="${BINDIR:-$HOME/.local/bin}"
+export LIBDIR="${LIBDIR:-$HOME/.local/lib}"
+export MANDIR="${MANDIR:-$HOME/.local/share/man}"
+
+export RUPM_PKGINFO="${RUPM_PKGINFO:-$XDG_DATA_HOME/rupm/pkginfo}"
+RUPM_PACKAGES="${RUPM_PACKAGES:-$XDG_DATA_HOME/rupm/packages}"
 RUPM_EXTENSION="${RUPM_EXTENSION:-tar}"
 
 workingdir="$HOME"
@@ -39,7 +48,7 @@ pkg_push() {
     remotepkg="$(pkg_remotefile "$RUPM_SSHPUSH" "$name")"
 
     debug "$name uploading to $remotepkg"
-    scp "$pkg" "$remotepkg" || die "Could not upload package(s) to repo."
+    scp "$pkg" "$remotepkg" || die "$name could not be uploaded to repo."
 }
 
 pkg_download() {
@@ -83,17 +92,30 @@ pkg_install() {
     fi
 }
 
-pkg_assemble() (
-    tmpfile="$(mktemp)"
-    cd "$workingdir"
-    if jtar "$RUPM_RECIPES/$1.json" > "$tmpfile"; then
-        chmod +r "$tmpfile"
-        mkdir -p "$RUPM_PACKAGES"
-        mv "$tmpfile" "$RUPM_PACKAGES/$1.$RUPM_EXTENSION"
-    else
-        err "$name could not be assembled into a package."
-    fi
-)
+pkg_assemble() {
+    name="$1"
+    filelist="$RUPM_PKGINFO/$name/filelist"
+    
+    tmppkgdir="$(mktemp -d)"
+    [ -f "$filelist" ] || die "$name has no filelist."
+    exec 9<"$filelist"
+    while IFS= read -r file <&9; do
+        keyname="$(echo "$file"|sed 's|^\$\([A-Za-z0-9_]*\).*|\1|')"
+        keypath="$(echo "$file"|sed 's|^\$[^/]*/\(.*\)|\1|')"
+        target="$(printenv "$keyname")"
+        mkdir -p "$tmppkgdir/$(dirname "$file")"
+        cp -a "${target:+$target/}$keypath" "$tmppkgdir/$file" \
+            || die "$name could not be assembled"
+    done
+    info "$name is packaged."
+    pushd "$tmppkgdir" >/dev/null
+    mkdir -p "$RUPM_PACKAGES"
+    sort "$filelist" \
+        | xargs -x -d '\n' tar -cf "$(pkg_localfile "$name")" \
+        || die "$name could not be assembled."
+    rm -rf "$tmppkgdir"
+    popd >/dev/null
+}
 
 pkg_clean() {
     name="$1"
@@ -115,6 +137,7 @@ while getopts vqC:cSAP opt; do
     P) tasks="$tasks pkg_push" ;;
     esac
 done
+cd "$workingdir"
 shift "$(($OPTIND - 1))"
 for task in $tasks; do
     foreach $task "$@"
