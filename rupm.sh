@@ -17,19 +17,31 @@ workingdir="$HOME"
 arch="${ARCH:-$(uname -m)}"
 verbosity="0"
 ext="$RUPM_EXTENSION"
+tmps=""
 
 trace() { [ "$verbosity" -ge "3" ] && printf '%s\n' "$*" >&2; }
 debug() { [ "$verbosity" -ge "2" ] && printf '%s\n' "$*" >&2; }
 info() { [ "$verbosity" -ge "1" ] && printf '%s\n' "$*" >&2; }
 warn() { [ "$verbosity" -ge "0" ] && printf '%s\n' "$*" >&2; }
 err() { [ "$verbosity" -ge "-1" ] && printf '%s\n' "$*" >&2; }
-die() { [ "$verbosity" -ge "-2" ] && printf '%s\n' "$*" >&2; exit 1; }
+die() { [ "$verbosity" -ge "-2" ] && printf '%s\n' "$*" >&2;
+    tmp_cleanup; exit 1; }
 
 foreach() {
     func="$1"; shift;
     for i in "$@"; do
         $func "$i"
     done
+}
+
+tmp_getdir() {
+    dir="$(mktemp -d)"
+    tmps="$dir $tmps"
+    echo "$dir"
+}
+
+tmp_cleanup() {
+    rm -rf $tmps #This is just asking for trouble. Let's see
 }
 
 pkg_localfile() {
@@ -96,7 +108,7 @@ pkg_assemble() {
     name="$1"
     filelist="$RUPM_PKGINFO/$name/filelist"
     
-    tmppkgdir="$(mktemp -d)"
+    tmppkgdir="$(tmp_getdir)"
     [ -f "$filelist" ] || die "$name has no filelist."
     exec 9<"$filelist"
     while IFS= read -r file <&9; do
