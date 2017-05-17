@@ -114,13 +114,13 @@ pkg_assemble() {
             || die "$name could not be assembled"
     done
     info "$name is packaged."
-    pushd "$tmppkgdir" >/dev/null
+    oldpwd="$(pwd)"; cd "$tmppkgdir"
     mkdir -p "$RUPM_PACKAGES"
     sort "$filelist" \
         | xargs -x -d '\n' tar -cf "$(pkg_localfile "$name")" \
         || die "$name could not be assembled."
     rm -rf "$tmppkgdir"
-    popd >/dev/null
+    cd "$oldpwd"
 }
 
 pkg_clean() {
