@@ -48,6 +48,11 @@ pkg_localfile() {
     echo "$RUPM_PACKAGES/$1.$ext"
 }
 
+pkg_filelist() {
+    name="$1"
+    echo "$RUPM_PKGINFO/$name/filelist"
+}
+
 pkg_remotefile() {
     type="$1"
     name="$2"
@@ -100,8 +105,8 @@ pkg_install() {
 
 pkg_assemble() {
     name="$1"
-    filelist="$RUPM_PKGINFO/$name/filelist"
     
+    filelist="$(pkg_filelist "$name")"
     tmppkgdir="$(tmp_getdir)"
     [ -f "$filelist" ] || die "$name has no filelist."
     exec 9<"$filelist"
@@ -123,6 +128,16 @@ pkg_assemble() {
     cd "$oldpwd"
 }
 
+pkg_remove() {
+    name="$1"
+
+    filelist="$(pkg_filelist "$name")"
+    [ -f "$filelist" ] || die "$name has no filelist."
+    sed 's|/\.$||' <"$filelist" \
+        | xargs -n 1 -d '\n' sh -c 'rm -r "`eval echo $1`"' '' \
+        || die "$name could not be deleted."
+}
+
 pkg_clean() {
     name="$1"
 
@@ -131,7 +146,7 @@ pkg_clean() {
 }
 
 tasks=""
-while getopts vqC:cSAP opt; do
+while getopts vqC:cSAPR opt; do
     case $opt in
     v) verbosity="$(($verbosity + 1))" ;;
     q) verbosity="$(($verbosity - 1))" ;;
@@ -140,6 +155,7 @@ while getopts vqC:cSAP opt; do
     S) tasks="$tasks pkg_get pkg_install" ;;
     A) tasks="$tasks pkg_assemble" ;;
     P) tasks="$tasks pkg_push" ;;
+    R) tasks="$tasks pkg_remove" ;;
     esac
 done
 cd "$workingdir"
