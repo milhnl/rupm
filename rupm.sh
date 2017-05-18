@@ -10,7 +10,7 @@ export LIBDIR="${LIBDIR:-$HOME/.local/lib}"
 export MANDIR="${MANDIR:-$HOME/.local/share/man}"
 
 export RUPM_PKGINFO="${RUPM_PKGINFO:-$XDG_DATA_HOME/rupm/pkginfo}"
-RUPM_PACKAGES="${RUPM_PACKAGES:-$XDG_DATA_HOME/rupm/packages}"
+RUPM_PACKAGES="${RUPM_PACKAGES:-$XDG_CACHE_HOME/rupm/packages}"
 RUPM_EXTENSION="${RUPM_EXTENSION:-tar}"
 
 workingdir="$HOME"
