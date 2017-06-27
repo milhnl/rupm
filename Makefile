@@ -3,7 +3,7 @@ NAME = rupm
 VERSION = 0.1
 PREFIX ?= /usr/local
 
-SHSRC = rupm.sh tarxenv.sh
+SHSRC = rupm.sh
 SRC = ${SHSRC}
 
 all:

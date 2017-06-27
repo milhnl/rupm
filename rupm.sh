@@ -100,7 +100,21 @@ pkg_install() {
     name="$1"
     
     debug "$name is installing"
-    tarxenv < "$(pkg_localfile "$name")"
+    pkgdir="$(tmp_getdir)"
+
+    tar -C "$pkgdir" -x <"$(pkg_localfile "$name")"
+    for envdir in "$pkgdir"/* ; do
+        [ -e "$envdir" ] || continue
+        #Do some basic sanitiation (try opening $(rm -rf .))
+        var="$(basename "$envdir" | sed 's/[^A-Za-z0-9\_]//g')"
+        #Make cp copy the *contents* instead of the whole dir
+        [ -d "$envdir" ] && envdir="$envdir/."
+        actualplace="$(printenv $var)"
+        cp -a "$envdir" "$actualplace" || \
+            die "$name member ${envdir#$pkgdir/} failed."
+    done
+
+    rm -rf "$pkgdir"
 }
 
 pkg_assemble() {
