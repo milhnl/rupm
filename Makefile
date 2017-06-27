@@ -1,28 +1,31 @@
 #rupm - Relocatable User Package Manager
+NAME = rupm
+VERSION = 0.1
+PREFIX ?= /usr/local
 
-include config.mk
-
-SHSRC = $(wildcard *.sh) #Script sources
-SHTGT = $(SRC:%.sh=${DESTDIR}${PREFIX}/bin/%) #Script targets
+SHSRC = rupm.sh tarxenv.sh
 SRC = ${SHSRC}
+
+all:
+	@echo "Only shell scripts, try 'make install' instead."
 
 dist:
 	@echo creating dist tarball
 	@mkdir -p ${NAME}-${VERSION}
-	@cp -R ${SRC} config.mk Makefile ${NAME}-${VERSION}
+	@cp -R ${SRC} Makefile ${NAME}-${VERSION}
 	@tar -cf ${NAME}-${VERSION}.tar ${NAME}-${VERSION}
 	@gzip ${NAME}-${VERSION}.tar
 	@rm -rf ${NAME}-${VERSION}
 
-${SHTGT}: ${SHSRC}
-	@mkdir -p ${DESTDIR}${PREFIX}/bin
-	@cp -f $(@F).sh $@
-	@chmod 755 $@
-
-install: ${SHTGT}
+install: ${SHSRC}
+	@for f in ${SHSRC}; do \
+		cp -f $$f "${DESTDIR}${PREFIX}/bin/$${f%.*}"; \
+		chmod 755 "${DESTDIR}${PREFIX}/bin/$${f%.*}"; \
+	done
 
 uninstall:
-	@echo removing executable files from ${DESTDIR}${PREFIX}/bin
-	@rm -f ${SHTGT}
+	@for $$f in ${SHSRC}; do \
+		rm -f "${DESTDIR}${PREFIX}/bin/$${f%.*}" \
+	done
 
 .PHONY: dist install uninstall
