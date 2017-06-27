@@ -44,6 +44,15 @@ tmp_cleanup() {
     rm -rf $tmps #This is just asking for trouble. Let's see
 }
 
+path_transform() { #$1: path to transform, or use stdin
+    ([ $# -ne 0 ] && echo "$1" || cat) \
+        | awk 'BEGIN {OFS = FS = "/"} {
+            target = ENVIRON[substr($1, 2)]
+            $1 = target != "" ? target : $1
+            print
+        }'
+}
+
 pkg_localfile() {
     echo "$RUPM_PACKAGES/$1.$ext"
 }
@@ -103,15 +112,13 @@ pkg_install() {
     pkgdir="$(tmp_getdir)"
 
     tar -C "$pkgdir" -x <"$(pkg_localfile "$name")"
-    for envdir in "$pkgdir"/* ; do
-        [ -e "$envdir" ] || continue
-        #Do some basic sanitiation (try opening $(rm -rf .))
-        var="$(basename "$envdir" | sed 's/[^A-Za-z0-9\_]//g')"
-        #Make cp copy the *contents* instead of the whole dir
-        [ -d "$envdir" ] && envdir="$envdir/."
-        actualplace="$(printenv $var)"
-        cp -a "$envdir" "$actualplace" || \
-            die "$name member ${envdir#$pkgdir/} failed."
+    for envkey in "$pkgdir"/* "$pkgdir"/.[!.]* "$pkgdir"/..?* ; do
+        [ -e "$envkey" ] || continue
+        fsfile="$(path_transform "$(basename "$envkey")")"
+        [ -d "$envkey" ] && envkey="$envkey/."
+        trace "$envkey -> $fsfile"
+        cp -a "$envkey" "$fsfile" || \
+            die "$name member ${envkey#$pkgdir/} failed."
     done
 
     rm -rf "$pkgdir"
@@ -119,17 +126,16 @@ pkg_install() {
 
 pkg_assemble() {
     name="$1"
-    
+
     filelist="$(pkg_filelist "$name")"
     tmppkgdir="$(tmp_getdir)"
     [ -f "$filelist" ] || die "$name has no filelist."
     exec 9<"$filelist"
     while IFS= read -r file <&9; do
-        keyname="$(echo "$file"|sed 's|^\$\([A-Za-z0-9_]*\).*|\1|')"
-        keypath="$(echo "$file"|sed 's|^\$[^/]*/\(.*\)|\1|')"
-        target="$(printenv "$keyname")"
+        fsfile="$(path_transform "$file")"
         mkdir -p "$tmppkgdir/$(dirname "$file")"
-        cp -a "${target:+$target/}$keypath" "$tmppkgdir/$file" \
+        trace "$fsfile -> $tmppkgdir/$file"
+        cp -a "$fsfile" "$tmppkgdir/$file" \
             || die "$name could not be assembled"
     done
     info "$name is packaged."
@@ -148,7 +154,8 @@ pkg_remove() {
     filelist="$(pkg_filelist "$name")"
     [ -f "$filelist" ] || die "$name has no filelist."
     sed 's|/\.$||' <"$filelist" \
-        | xargs -n 1 -d '\n' sh -c 'rm -r "`eval echo $1`"' '' \
+        | path_transform \
+        | xargs -d'\n' rm -r \
         || die "$name could not be deleted."
 }
 
