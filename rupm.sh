@@ -5,9 +5,9 @@
 export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
 export XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
 export PREFIX="${PREFIX:-$HOME/.local}"
-export BINDIR="${BINDIR:-$HOME/.local/bin}"
-export LIBDIR="${LIBDIR:-$HOME/.local/lib}"
-export MANDIR="${MANDIR:-$HOME/.local/share/man}"
+export BINDIR="${BINDIR:-$PREFIX/bin}"
+export LIBDIR="${LIBDIR:-$PREFIX/lib}"
+export MANDIR="${MANDIR:-$XDG_DATA_HOME/man}"
 
 export RUPM_PKGINFO="${RUPM_PKGINFO:-$XDG_DATA_HOME/rupm/pkginfo}"
 RUPM_PACKAGES="${RUPM_PACKAGES:-$XDG_CACHE_HOME/rupm/packages}"
