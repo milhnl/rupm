@@ -57,9 +57,10 @@ pkg_localfile() {
     echo "$RUPM_PACKAGES/$1.$ext"
 }
 
-pkg_filelist() {
+pkg_meta() { #1: name, 2: metafile
     name="$1"
-    echo "$RUPM_PKGINFO/$name/filelist"
+    metafile="$2"
+    echo "$RUPM_PKGINFO/$name/$metafile"
 }
 
 pkg_remotefile() {
@@ -127,7 +128,7 @@ pkg_install() {
 pkg_assemble() {
     name="$1"
 
-    filelist="$(pkg_filelist "$name")"
+    filelist="$(pkg_meta "$name" filelist)"
     tmppkgdir="$(tmp_getdir)"
     [ -f "$filelist" ] || die "$name has no filelist."
     exec 9<"$filelist"
@@ -151,7 +152,7 @@ pkg_assemble() {
 pkg_remove() {
     name="$1"
 
-    filelist="$(pkg_filelist "$name")"
+    filelist="$(pkg_meta "$name" filelist)"
     [ -f "$filelist" ] || die "$name has no filelist."
     sed 's|/\.$||' <"$filelist" \
         | path_transform \
