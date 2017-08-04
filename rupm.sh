@@ -34,10 +34,10 @@ foreach() {
     done
 }
 
-tmp_getdir() {
-    dir="$(mktemp -d)"
-    tmps="$dir $tmps"
-    echo "$dir"
+tmp_get() { #1: Optional -d flag for directory
+    file="$(mktemp "$@")"
+    tmps="$file $tmps"
+    echo "$file"
 }
 
 tmp_cleanup() {
@@ -54,7 +54,7 @@ path_transform() { #$1: path to transform, or use stdin
 }
 
 pkg_localfile() {
-    echo "$RUPM_PACKAGES/$1.$ext"
+    echo "$RUPM_PACKAGES/$1"
 }
 
 pkg_meta() { #1: name, 2: metafile
@@ -81,19 +81,22 @@ pkg_push() {
 pkg_download() {
     name="$1"
     pkg="$(pkg_localfile "$name")"
+    tmp="$(tmp_get)"
     
-    mkdir -p "$RUPM_PACKAGES"
     info "$name downloading."
     for repo in $RUPM_MIRRORLIST; do
         url="$(pkg_remotefile "$repo" "$name")"
         [ "$verbosity" -ge "3" ] || curlopts="-s"
-        if curl -N $curlopts --progress-bar --fail "$url" -o "$pkg"; then
-            debug "$name downloaded from $url"
-            return 0;
-        fi
+        curl -N $curlopts --progress-bar --fail "$url" -o "$tmp" && break
     done
-    warn "$name could not be downloaded."
-    false
+    if [ -f "$tmp" ]; then
+        debug "$name downloaded from $url"
+        mkdir -p "$pkg"
+        tar -C"$pkg" -xf"$tmp"
+    else
+        warn "$name could not be downloaded."
+        false
+    fi
 }
 
 pkg_get() {
@@ -110,9 +113,8 @@ pkg_install() {
     name="$1"
     
     debug "$name is installing"
-    pkgdir="$(tmp_getdir)"
+    pkgdir="$(pkg_localfile "$name")"
 
-    tar -C "$pkgdir" -x <"$(pkg_localfile "$name")"
     for envkey in "$pkgdir"/* "$pkgdir"/.[!.]* "$pkgdir"/..?* ; do
         [ -e "$envkey" ] || continue
         fsfile="$(path_transform "$(basename "$envkey")")"
@@ -129,7 +131,7 @@ pkg_assemble() {
     name="$1"
 
     filelist="$(pkg_meta "$name" filelist)"
-    tmppkgdir="$(tmp_getdir)"
+    tmppkgdir="$(tmp_get -d)"
     [ -f "$filelist" ] || die "$name has no filelist."
     exec 9<"$filelist"
     while IFS= read -r file <&9; do
