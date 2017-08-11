@@ -19,11 +19,11 @@ verbosity="0"
 ext="$RUPM_EXTENSION"
 tmps=""
 
-trace() { [ "$verbosity" -ge "3" ] && printf '%s\n' "$*" >&2; }
-debug() { [ "$verbosity" -ge "2" ] && printf '%s\n' "$*" >&2; }
-info() { [ "$verbosity" -ge "1" ] && printf '%s\n' "$*" >&2; }
-warn() { [ "$verbosity" -ge "0" ] && printf '%s\n' "$*" >&2; }
-err() { [ "$verbosity" -ge "-1" ] && printf '%s\n' "$*" >&2; }
+trace() { [ "$verbosity" -ge "3" ] && printf '%s\n' "$*" >&2; true;}
+debug() { [ "$verbosity" -ge "2" ] && printf '%s\n' "$*" >&2; true;}
+info() { [ "$verbosity" -ge "1" ] && printf '%s\n' "$*" >&2; true;}
+warn() { [ "$verbosity" -ge "0" ] && printf '%s\n' "$*" >&2; true;}
+err() { [ "$verbosity" -ge "-1" ] && printf '%s\n' "$*" >&2; true;}
 die() { [ "$verbosity" -ge "-2" ] && printf '%s\n' "$*" >&2;
     tmp_cleanup; exit 1; }
 
