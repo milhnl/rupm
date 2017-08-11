@@ -74,35 +74,26 @@ pkg_push() {
     scp "$pkg" "$remotepkg" || die "$name could not be uploaded to repo."
 }
 
-pkg_download() {
-    name="$1"
-    pkg="$RUPM_PACKAGES/$name"
+prv_http() { #1: uri, #2: verb, #3: name
     tmp="$(tmp_get)"
     
-    info "$name downloading."
-    for repo in $RUPM_MIRRORLIST; do
-        url="$(pkg_remotefile "$repo" "$name")"
-        [ "$verbosity" -ge "3" ] || curlopts="-s"
-        curl -N $curlopts --progress-bar --fail "$url" -o "$tmp" && break
-    done
-    if [ -f "$tmp" ]; then
-        debug "$name downloaded from $url"
-        mkdir -p "$pkg"
-        tar -C"$pkg" -xf"$tmp"
-    else
-        warn "$name could not be downloaded."
-        false
-    fi
+    set -- "$(pkg_remotefile "$1" "$3")" "$2" "$3"
+    debug "$3 trying $1"
+    [ "$verbosity" -ge "1" ] || curlopts="-s"
+    curl -N $curlopts --progress-bar --fail "$1" -o "$tmp" \
+        && debug "$3 downloaded from $1" \
+        && mkdir -p "$RUPM_PACKAGES/$3" \
+        && tar -C"$RUPM_PACKAGES/$3" -xf"$tmp"
 }
 
-pkg_get() {
-    name="$1"
-    pkg="$RUPM_PACKAGES/$name"
-
-    pkg_download "$name" \
-        || ( [ -f "$pkg" ] \
-            && warn "$name will be installed using a cached package." ) \
-        || die "$name is not available.";
+pkg_get() { #1: name
+    for provider in $RUPM_MIRRORLIST; do
+        case $provider in
+        https://*|http://*) prv_http $provider get "$1" && return;;
+        *) die "$1 provider $provider not supported" ;;
+        esac
+    done
+    die "$1 could not be found"
 }
 
 pkg_install() {
