@@ -158,20 +158,12 @@ pkg_remove() {
         || die "$name could not be deleted."
 }
 
-pkg_clean() {
-    name="$1"
-
-    rm "$RUPM_PACKAGES/$name" 2>/dev/null&&info "$name cleaned from cache."
-    rmdir --ignore-fail-on-non-empty "$RUPM_PACKAGES" 2>/dev/null || true
-}
-
 tasks=""
-while getopts vqC:cSAPR opt; do
+while getopts vqC:SAPR opt; do
     case $opt in
     v) verbosity="$(($verbosity + 1))" ;;
     q) verbosity="$(($verbosity - 1))" ;;
     C) workingdir="$OPTARG"; info "Creating packages from $workingdir" ;;
-    c) tasks="$tasks pkg_clean" ;;
     S) tasks="$tasks pkg_get pkg_install" ;;
     A) tasks="$tasks pkg_assemble" ;;
     P) tasks="$tasks pkg_push" ;;
