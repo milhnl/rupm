@@ -53,10 +53,6 @@ path_transform() { #$1: path to transform, or use stdin
         }'
 }
 
-pkg_localfile() {
-    echo "$RUPM_PACKAGES/$1"
-}
-
 pkg_meta() { #1: name, 2: metafile
     name="$1"
     metafile="$2"
@@ -71,7 +67,7 @@ pkg_remotefile() {
 
 pkg_push() {
     name="$1"
-    pkg="$(pkg_localfile "$name")"
+    pkg="$RUPM_PACKAGES/$name"
     remotepkg="$(pkg_remotefile "$RUPM_SSHPUSH" "$name")"
 
     debug "$name uploading to $remotepkg"
@@ -80,7 +76,7 @@ pkg_push() {
 
 pkg_download() {
     name="$1"
-    pkg="$(pkg_localfile "$name")"
+    pkg="$RUPM_PACKAGES/$name"
     tmp="$(tmp_get)"
     
     info "$name downloading."
@@ -101,7 +97,7 @@ pkg_download() {
 
 pkg_get() {
     name="$1"
-    pkg="$(pkg_localfile "$name")"
+    pkg="$RUPM_PACKAGES/$name"
 
     pkg_download "$name" \
         || ( [ -f "$pkg" ] \
@@ -113,7 +109,7 @@ pkg_install() {
     name="$1"
     
     debug "$name is installing"
-    pkgdir="$(pkg_localfile "$name")"
+    pkgdir="$RUPM_PACKAGES/$name"
 
     for envkey in "$pkgdir"/* "$pkgdir"/.[!.]* "$pkgdir"/..?* ; do
         [ -e "$envkey" ] || continue
@@ -145,7 +141,7 @@ pkg_assemble() {
     oldpwd="$(pwd)"; cd "$tmppkgdir"
     mkdir -p "$RUPM_PACKAGES"
     sort "$filelist" \
-        | xargs -x -d '\n' tar -cf "$(pkg_localfile "$name")" \
+        | xargs -x -d '\n' tar -cf "$RUPM_PACKAGES/$name" \
         || die "$name could not be assembled."
     rm -rf "$tmppkgdir"
     cd "$oldpwd"
@@ -165,7 +161,7 @@ pkg_remove() {
 pkg_clean() {
     name="$1"
 
-    rm "$(pkg_localfile "$name")" 2>/dev/null&&info "$name cleaned from cache."
+    rm "$RUPM_PACKAGES/$name" 2>/dev/null&&info "$name cleaned from cache."
     rmdir --ignore-fail-on-non-empty "$RUPM_PACKAGES" 2>/dev/null || true
 }
 
