@@ -65,16 +65,8 @@ pkg_remotefile() {
     echo "$(eval "echo $type")"
 }
 
-pkg_push() {
-    name="$1"
-    pkg="$RUPM_PACKAGES/$name"
-    remotepkg="$(pkg_remotefile "$RUPM_SSHPUSH" "$name")"
-
-    debug "$name uploading to $remotepkg"
-    scp "$pkg" "$remotepkg" || die "$name could not be uploaded to repo."
-}
-
-prv_http() { #1: uri, #2: verb, #3: name
+prv_http() { #1: uri, 2: verb, 3: name
+    [ "$2" = "get" ] || return 1
     tmp="$(tmp_get)"
     
     set -- "$(pkg_remotefile "$1" "$3")" "$2" "$3"
@@ -86,15 +78,18 @@ prv_http() { #1: uri, #2: verb, #3: name
         && tar -C"$RUPM_PACKAGES/$3" -xf"$tmp"
 }
 
-pkg_get() { #1: name
+pkg_do() { #1: verb, 2: name
     for provider in $RUPM_MIRRORLIST; do
         case $provider in
-        https://*|http://*) prv_http $provider get "$1" && return;;
+        https://*|http://*) prv_http $provider "$1" "$2" && return ;;
         *) die "$1 provider $provider not supported" ;;
         esac
     done
-    die "$1 could not be found"
+    false
 }
+
+pkg_get() { pkg_do get "$1" || die "$1 could not be found"; }
+pkg_put() { pkg_do put "$1" || die "$1 could not be pushed"; }
 
 pkg_install() {
     name="$1"
@@ -157,7 +152,7 @@ while getopts vqC:SAPR opt; do
     C) workingdir="$OPTARG"; info "Creating packages from $workingdir" ;;
     S) tasks="$tasks pkg_get pkg_install" ;;
     A) tasks="$tasks pkg_assemble" ;;
-    P) tasks="$tasks pkg_push" ;;
+    P) tasks="$tasks pkg_put" ;;
     R) tasks="$tasks pkg_remove" ;;
     esac
 done
