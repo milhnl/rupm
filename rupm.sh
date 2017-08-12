@@ -92,7 +92,9 @@ prv_ssh() { #1: uri, 2: verb, 3: name
     put)
         sort "$filelist" \
             | (cd "$RUPM_PACKAGES/$3"; xargs -xd '\n' tar -cf "$tmp") \
+            && chmod 0644 "$tmp" \
             && scp "$tmp" "$1" \
+            && rm -r "$tmp" "$RUPM_PACKAGES/$3" \
             && debug "$3 pushed to $1"
         ;;
     esac
@@ -157,14 +159,13 @@ pkg_remove() {
 }
 
 tasks=""
-while getopts vqC:SAPR opt; do
+while getopts vqC:SPR opt; do
     case $opt in
     v) verbosity="$(($verbosity + 1))" ;;
     q) verbosity="$(($verbosity - 1))" ;;
     C) workingdir="$OPTARG"; info "Creating packages from $workingdir" ;;
     S) tasks="$tasks pkg_get pkg_install" ;;
-    A) tasks="$tasks pkg_assemble" ;;
-    P) tasks="$tasks pkg_put" ;;
+    P) tasks="$tasks pkg_assemble pkg_put" ;;
     R) tasks="$tasks pkg_remove" ;;
     esac
 done
