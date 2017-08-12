@@ -78,10 +78,31 @@ prv_http() { #1: uri, 2: verb, 3: name
         && tar -C"$RUPM_PACKAGES/$3" -xf"$tmp"
 }
 
+prv_ssh() { #1: uri, 2: verb, 3: name
+    tmp="$(tmp_get)"
+
+    set -- "$(pkg_remotefile "$1" "$3" | sed 's|^ssh://||')" "$2" "$3"
+    case "$2" in
+    get)
+        scp "$1" "$tmp" \
+            && debug "$3 downloaded from $1" \
+            && mkdir -p "$RUPM_PACKAGES/$3" \
+            && tar -C"$RUPM_PACKAGES/$3" -xf"$tmp"
+        ;;
+    put)
+        sort "$filelist" \
+            | (cd "$RUPM_PACKAGES/$3"; xargs -xd '\n' tar -cf "$tmp") \
+            && scp "$tmp" "$1" \
+            && debug "$3 pushed to $1"
+        ;;
+    esac
+}
+
 pkg_do() { #1: verb, 2: name
     for provider in $RUPM_MIRRORLIST; do
         case $provider in
         https://*|http://*) prv_http $provider "$1" "$2" && return ;;
+        ssh://*) prv_ssh $provider "$1" "$2" && return ;;
         *) die "$1 provider $provider not supported" ;;
         esac
     done
