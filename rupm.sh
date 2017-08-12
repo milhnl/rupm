@@ -113,24 +113,15 @@ pkg_assemble() {
     name="$1"
 
     filelist="$(pkg_meta "$name" filelist)"
-    tmppkgdir="$(tmp_get -d)"
     [ -f "$filelist" ] || die "$name has no filelist."
     exec 9<"$filelist"
     while IFS= read -r file <&9; do
         fsfile="$(path_transform "$file")"
-        mkdir -p "$tmppkgdir/$(dirname "$file")"
-        trace "$fsfile -> $tmppkgdir/$file"
-        cp -a "$fsfile" "$tmppkgdir/$file" \
-            || die "$name could not be assembled"
+        mkdir -p "$RUPM_PACKAGES/$1/$(dirname "$file")"
+        trace "$fsfile -> $RUPM_PACKAGES/$1/$file"
+        cp -a "$fsfile" "$RUPM_PACKAGES/$1/$file" \
+            || die "$name member $file failed"
     done
-    info "$name is packaged."
-    oldpwd="$(pwd)"; cd "$tmppkgdir"
-    mkdir -p "$RUPM_PACKAGES"
-    sort "$filelist" \
-        | xargs -x -d '\n' tar -cf "$RUPM_PACKAGES/$name" \
-        || die "$name could not be assembled."
-    rm -rf "$tmppkgdir"
-    cd "$oldpwd"
 }
 
 pkg_remove() {
