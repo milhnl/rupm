@@ -90,7 +90,7 @@ prv_ssh() { #1: uri, 2: verb, 3: name
             && tar -C"$RUPM_PACKAGES/$3" -xf"$tmp"
         ;;
     put)
-        sort "$filelist" \
+        sort "$(pkg_meta "$3" filelist)" \
             | (cd "$RUPM_PACKAGES/$3"; xargs -xd '\n' tar -cf "$tmp") \
             && chmod 0644 "$tmp" \
             && scp "$tmp" "$1" \
