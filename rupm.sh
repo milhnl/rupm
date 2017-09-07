@@ -54,15 +54,17 @@ path_transform() { #$1: path to transform, or use stdin
 }
 
 pkg_meta() { #1: name, 2: metafile
-    name="$1"
-    metafile="$2"
-    echo "$RUPM_PKGINFO/$name/$metafile"
+    echo "$RUPM_PKGINFO/$1/$2"
 }
 
-pkg_remotefile() {
-    type="$1"
-    name="$2"
-    echo "$(eval "echo $type")"
+pkg_meta_f() { #1: name, 2: metafile
+    [ -f "$(pkg_meta "$1" "$2")" ] || die "$1 missing info ($2)"
+    pkg_meta "$1" "$2"
+}
+
+pkg_remotefile() { #1: remote template, 2: name
+    name="$2" #Needed by the template
+    echo "$(eval "echo $1")"
 }
 
 prv_http() { #1: uri, 2: verb, 3: name
@@ -90,7 +92,7 @@ prv_ssh() { #1: uri, 2: verb, 3: name
             && tar -C"$RUPM_PACKAGES/$3" -xf"$tmp"
         ;;
     put)
-        sort "$(pkg_meta "$3" filelist)" \
+        sort "$(pkg_meta_f "$3" filelist)" \
             | (cd "$RUPM_PACKAGES/$3"; xargs -xd '\n' tar -cf "$tmp") \
             && chmod 0644 "$tmp" \
             && scp "$tmp" "$1" \
@@ -114,11 +116,9 @@ pkg_do() { #1: verb, 2: name
 pkg_get() { pkg_do get "$1" || die "$1 could not be found"; }
 pkg_put() { pkg_do put "$1" || die "$1 could not be pushed"; }
 
-pkg_install() {
-    name="$1"
-    
-    debug "$name is installing"
-    pkgdir="$RUPM_PACKAGES/$name"
+pkg_install() { #1: name
+    debug "$1 is installing"
+    pkgdir="$RUPM_PACKAGES/$1"
 
     for envkey in "$pkgdir"/* "$pkgdir"/.[!.]* "$pkgdir"/..?* ; do
         [ -e "$envkey" ] || continue
@@ -126,33 +126,25 @@ pkg_install() {
         [ -d "$envkey" ] && envkey="$envkey/."
         trace "$envkey -> $fsfile"
         cp -a "$envkey" "$fsfile" || \
-            die "$name member ${envkey#$pkgdir/} failed."
+            die "$1 member ${envkey#$pkgdir/} failed."
     done
 
     rm -rf "$pkgdir"
 }
 
-pkg_assemble() {
-    name="$1"
-
-    filelist="$(pkg_meta "$name" filelist)"
-    [ -f "$filelist" ] || die "$name has no filelist."
-    exec 9<"$filelist"
+pkg_assemble() { #1: name
+    exec 9<"$(pkg_meta_f "$1" filelist)"
     while IFS= read -r file <&9; do
         fsfile="$(path_transform "$file")"
         mkdir -p "$RUPM_PACKAGES/$1/$(dirname "$file")"
         trace "$fsfile -> $RUPM_PACKAGES/$1/$file"
         cp -a "$fsfile" "$RUPM_PACKAGES/$1/$file" \
-            || die "$name member $file failed"
+            || die "$1 member $file failed"
     done
 }
 
-pkg_remove() {
-    name="$1"
-
-    filelist="$(pkg_meta "$name" filelist)"
-    [ -f "$filelist" ] || die "$name has no filelist."
-    sed 's|/\.$||' <"$filelist" \
+pkg_remove() { #1: name
+    sed 's|/\.$||' <"$(pkg_meta_f "$1" filelist)" \
         | path_transform \
         | xargs -d'\n' rm -r \
         || die "$name could not be deleted."
