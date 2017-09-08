@@ -74,7 +74,7 @@ pkg_meta_f() { #1: name, 2: metafile
 
 pkg_remotefile() { #1: remote template, 2: name
     name="$2" #Needed by the template
-    echo "$(eval "echo $1")"
+    eval "echo $1"
 }
 
 prv_http() { #1: uri, 2: verb, 3: name
