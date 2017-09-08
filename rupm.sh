@@ -44,6 +44,12 @@ tmp_cleanup() {
     rm -rf $tmps #This is just asking for trouble. Let's see
 }
 
+cp_f() { #1: source, 2: dest, 3: name (optional)
+    trace "${3:-1} -> $2"
+    mkdir -p "$(dirname "$2")"
+    cp -a "$1" "$2" || die "${3:-1} copy failed."
+}
+
 path_transform() { #$1: path to transform, or use stdin
     ([ $# -ne 0 ] && echo "$1" || cat) \
         | awk 'BEGIN {OFS = FS = "/"} {
@@ -51,6 +57,10 @@ path_transform() { #$1: path to transform, or use stdin
             $1 = target != "" ? target : $1
             print
         }'
+}
+
+realbase() { #1: path
+    basename "$(echo "$1" | sed 's:/.$::')"
 }
 
 pkg_meta() { #1: name, 2: metafile
@@ -118,28 +128,20 @@ pkg_put() { pkg_do put "$1" || die "$1 could not be pushed"; }
 
 pkg_install() { #1: name
     debug "$1 is installing"
-    pkgdir="$RUPM_PACKAGES/$1"
-
-    for envkey in "$pkgdir"/* "$pkgdir"/.[!.]* "$pkgdir"/..?* ; do
+    for envkey in "$RUPM_PACKAGES/$1"/* "$RUPM_PACKAGES/$1"/.[!.]* \
+            "$RUPM_PACKAGES/$1"/..?* ; do
         [ -e "$envkey" ] || continue
-        fsfile="$(path_transform "$(basename "$envkey")")"
         [ -d "$envkey" ] && envkey="$envkey/."
-        trace "$envkey -> $fsfile"
-        cp -a "$envkey" "$fsfile" || \
-            die "$1 member ${envkey#$pkgdir/} failed."
+        cp_f "$envkey" "$(path_transform "$(realbase "$envkey")")" \
+            "${envkey#$RUPM_PACKAGES/}"
     done
-
-    rm -rf "$pkgdir"
+    rm -rf "$RUPM_PACKAGES/$1"
 }
 
 pkg_assemble() { #1: name
     exec 9<"$(pkg_meta_f "$1" filelist)"
     while IFS= read -r file <&9; do
-        fsfile="$(path_transform "$file")"
-        mkdir -p "$RUPM_PACKAGES/$1/$(dirname "$file")"
-        trace "$fsfile -> $RUPM_PACKAGES/$1/$file"
-        cp -a "$fsfile" "$RUPM_PACKAGES/$1/$file" \
-            || die "$1 member $file failed"
+        cp_f "$(path_transform "$file")" "$RUPM_PACKAGES/$1/$file" "$1/$file"
     done
 }
 
