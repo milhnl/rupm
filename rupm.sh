@@ -13,7 +13,6 @@ export RUPM_PKGINFO="${RUPM_PKGINFO:-$XDG_DATA_HOME/rupm/pkginfo}"
 RUPM_PACKAGES="${RUPM_PACKAGES:-$XDG_CACHE_HOME/rupm/packages}"
 RUPM_EXTENSION="${RUPM_EXTENSION:-tar}"
 
-workingdir="$HOME"
 arch="${ARCH:-$(uname -m)}"
 verbosity="0"
 ext="$RUPM_EXTENSION"
@@ -153,17 +152,15 @@ pkg_remove() { #1: name
 }
 
 tasks=""
-while getopts vqC:SPR opt; do
+while getopts vqSPR opt; do
     case $opt in
     v) verbosity="$(($verbosity + 1))" ;;
     q) verbosity="$(($verbosity - 1))" ;;
-    C) workingdir="$OPTARG"; info "Creating packages from $workingdir" ;;
     S) tasks="$tasks pkg_get pkg_install" ;;
     P) tasks="$tasks pkg_assemble pkg_put" ;;
     R) tasks="$tasks pkg_remove" ;;
     esac
 done
-cd "$workingdir"
 shift "$(($OPTIND - 1))"
 for task in $tasks; do
     foreach $task "$@"
