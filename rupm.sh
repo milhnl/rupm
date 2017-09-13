@@ -76,7 +76,7 @@ pkg_remotefile() { #1: remote template, 2: name
     eval "echo $1"
 }
 
-prv_http() { #1: uri, 2: verb, 3: name
+prv_handler_http() { #1: uri, 2: verb, 3: name
     [ "$2" = "get" ] || return 1
     tmp="$(tmp_get)"
     
@@ -89,7 +89,7 @@ prv_http() { #1: uri, 2: verb, 3: name
         && tar -C"$RUPM_PACKAGES/$3" -xf"$tmp"
 }
 
-prv_ssh() { #1: uri, 2: verb, 3: name
+prv_handler_ssh() { #1: uri, 2: verb, 3: name
     tmp="$(tmp_get)"
 
     set -- "$(pkg_remotefile "$1" "$3" | sed 's|^ssh://||')" "$2" "$3"
@@ -111,13 +111,17 @@ prv_ssh() { #1: uri, 2: verb, 3: name
     esac
 }
 
-pkg_do() { #1: verb, 2: name
-    for provider in $RUPM_MIRRORLIST; do
-        case $provider in
-        https://*|http://*) prv_http $provider "$1" "$2" && return ;;
-        ssh://*) prv_ssh $provider "$1" "$2" && return ;;
-        *) die "$1 provider $provider not supported" ;;
-        esac
+prv_do() { #1: provider, prv_args...
+    case "$1" in
+    https://*|http://*) prv_handler_http "$@" ;;
+    ssh://*) prv_handler_ssh "$@" ;;
+    *) die "provider $1 not supported" ;;
+    esac
+}
+
+pkg_do() { #prv_args...
+    for prv in $RUPM_MIRRORLIST; do
+        prv_do "$prv" "$@" && return
     done
     false
 }
