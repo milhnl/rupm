@@ -62,13 +62,13 @@ realbase() { #1: path
     basename "$(echo "$1" | sed 's:/.$::')"
 }
 
-pkg_meta() { #1: name, 2: metafile
-    echo "$RUPM_PKGINFO/$1/$2"
+pkg_meta() { #1: name, 2?: metafile
+    echo "$RUPM_PKGINFO/$1/${2:+/$2}"
 }
 
-pkg_meta_f() { #1: name, 2: metafile
-    [ -f "$(pkg_meta "$1" "$2")" ] || die "$1 missing info ($2)"
-    pkg_meta "$1" "$2"
+pkg_meta_f() { #1: name, 2?: metafile
+    [ -f "$(pkg_meta "$@")" ] || die "$1 missing info${2:+ ($2)}"
+    pkg_meta "$@"
 }
 
 pkg_remotefile() { #1: remote template, 2: name
