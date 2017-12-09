@@ -202,6 +202,12 @@ pkg_assemble() { #1: name
     done
 }
 
+pkg_edit() { #1: name
+    mkdir -p "$(pkg_meta "$1")"
+    "$EDITOR" "$(pkg_meta "$1" filelist)"
+    rmdir "$(pkg_meta "$1")" 2>/dev/null
+}
+
 pkg_remove() { #1: name
     sed 's|/\.$||' <"$(pkg_meta_f "$1" filelist)" \
         | path_transform \
@@ -211,10 +217,11 @@ pkg_remove() { #1: name
 
 cd "$HOME"
 tasks=""
-while getopts vqSyPR opt; do
+while getopts vqESyPR opt; do
     case $opt in
     v) verbosity="$(($verbosity + 1))" ;;
     q) verbosity="$(($verbosity - 1))" ;;
+    E) tasks="$tasks pkg_edit" ;;
     S) tasks="$tasks pkg_get pkg_install" ;;
     y) tasks="$tasks prv_sync" ;;
     P) tasks="$tasks pkg_assemble pkg_put" ;;
