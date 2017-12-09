@@ -217,10 +217,12 @@ pkg_remove() { #1: name
 
 cd "$HOME"
 tasks=""
-while getopts vqESyPR opt; do
+pkgs=""
+while getopts vquESyPR opt; do
     case $opt in
     v) verbosity="$(($verbosity + 1))" ;;
     q) verbosity="$(($verbosity - 1))" ;;
+    u) pkgs="$(ls -1 "$RUPM_PKGINFO")" ;;
     E) tasks="$tasks pkg_edit" ;;
     S) tasks="$tasks pkg_get pkg_install" ;;
     y) tasks="$tasks prv_sync" ;;
@@ -229,10 +231,11 @@ while getopts vqESyPR opt; do
     esac
 done
 shift "$(($OPTIND - 1))"
+pkgs="$pkgs $*"
 for task in $tasks; do
     if echo "$task" | grep -q '^pkg'; then
         trace "running task $task"
-        foreach $task "$@"
+        foreach $task $pkgs
     else
         $task
     fi
