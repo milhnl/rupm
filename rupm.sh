@@ -10,12 +10,14 @@ export LIBDIR="${LIBDIR:-$PREFIX/lib}"
 export MANDIR="${MANDIR:-$XDG_DATA_HOME/man}"
 
 export RUPM_PKGINFO="${RUPM_PKGINFO:-$XDG_DATA_HOME/rupm/pkginfo}"
+export RUPM_PRVINFO="${RUPM_PRVINFO:-$XDG_DATA_HOME/rupm/prv}"
 RUPM_PACKAGES="${RUPM_PACKAGES:-$XDG_CACHE_HOME/rupm/packages}"
-RUPM_EXTENSION="${RUPM_EXTENSION:-tar}"
+IDENTREGEX='[A-Za-z-]*.[A-Za-z0-9_.]*_[A-Za-z0-9_]*-[A-Za-z0-9_-]*'
+IDENTPRINT='%s.%s_%s-%s'
 
-arch="${ARCH:-$(uname -m)}"
+ARCH="${ARCH:-$(uname -m)}"
+OS="${OS:-$(uname -s)}"
 verbosity="0"
-ext="$RUPM_EXTENSION"
 tmps=""
 
 trace() { [ "$verbosity" -ge "3" ] && printf '%s\n' "$*" >&2; true;}
@@ -62,8 +64,17 @@ realbase() { #1: path
     basename "$(echo "$1" | sed 's:/.$::')"
 }
 
+prv_meta() { #1: prv, 2?: metafile
+    echo "$RUPM_PRVINFO/$(echo "$1" | sed 's|://|_|;s|/|_|;')${2:+/$2}"
+}
+
+prv_meta_f() { #1: prv, 2?: metafile
+    [ -f "$(prv_meta "$@")" ] || die "repo $1 missing info${2:+ ($2)}"
+    prv_meta "$@"
+}
+
 pkg_meta() { #1: name, 2?: metafile
-    echo "$RUPM_PKGINFO/$1/${2:+/$2}"
+    echo "$RUPM_PKGINFO/$1${2:+/$2}"
 }
 
 pkg_meta_f() { #1: name, 2?: metafile
@@ -71,36 +82,56 @@ pkg_meta_f() { #1: name, 2?: metafile
     pkg_meta "$@"
 }
 
-pkg_remotefile() { #1: remote template, 2: name
-    name="$2" #Needed by the template
-    eval "echo $1"
+pkg_meta_r() { #1: name, 2: metafile
+    cat "$(pkg_meta "$@")"
+}
+
+pkg_choose() { #1: prv, 2: name
+    grep "^$2" <"$(prv_meta_f "$1" packages)" | tail -n1
+}
+
+pkg_mkident() { #1: name
+    printf "$IDENTPRINT" "$1" \
+        "$(pkg_meta_r "$1" version).$(pkg_meta_r "$1" revision)" \
+        "$(pkg_meta_r "$1" arch)" \
+        "$(pkg_meta_r "$1" os)"
 }
 
 prv_handler_http() { #1: uri, 2: verb, 3: name
-    [ "$2" = "get" ] || return 1
     tmp="$(tmp_get)"
     
-    set -- "$(pkg_remotefile "$1" "$3")" "$2" "$3"
-    debug "$3 trying $1"
     [ "$verbosity" -ge "1" ] || curlopts="-s"
-    curl -N $curlopts --progress-bar --fail "$1" -o "$tmp" \
-        && debug "$3 downloaded from $1" \
-        && mkdir -p "$RUPM_PACKAGES/$3" \
-        && tar -C"$RUPM_PACKAGES/$3" -xf"$tmp"
+    case "$2" in
+    get)
+        set -- "$1$(pkg_choose "$1" "$3").tar" "$2" "$3"
+        curl -N $curlopts --progress-bar --fail "$1" -o "$tmp" \
+            && debug "$3 downloaded from $1" \
+            && mkdir -p "$RUPM_PACKAGES/$3" \
+            && tar -C"$RUPM_PACKAGES/$3" -xf"$tmp"
+        ;;
+    put) return 1 ;;
+    list)
+        curl -Ns --fail "$1" \
+            | sed 's/<[^>]*>//g' \
+            | sed -n 's/\('"$IDENTREGEX"'\).*/\1/p' | sort | uniq
+        ;;
+    esac
 }
 
 prv_handler_ssh() { #1: uri, 2: verb, 3: name
     tmp="$(tmp_get)"
+    set -- "$(echo "$1" | sed 's|^ssh://||')" "$2" "$3"
 
-    set -- "$(pkg_remotefile "$1" "$3" | sed 's|^ssh://||')" "$2" "$3"
     case "$2" in
     get)
+        set -- "$1$(pkg_choose "$1" "$3").tar" "$2" "$3"
         scp "$1" "$tmp" \
             && debug "$3 downloaded from $1" \
             && mkdir -p "$RUPM_PACKAGES/$3" \
             && tar -C"$RUPM_PACKAGES/$3" -xf"$tmp"
         ;;
     put)
+        set -- "$1$(pkg_mkident "$3").tar" "$2" "$3"
         sort "$(pkg_meta_f "$3" filelist)" \
             | (cd "$RUPM_PACKAGES/$3"; xargs -xd '\n' tar -cf "$tmp") \
             && chmod 0644 "$tmp" \
@@ -108,10 +139,15 @@ prv_handler_ssh() { #1: uri, 2: verb, 3: name
             && rm -r "$tmp" "$RUPM_PACKAGES/$3" \
             && debug "$3 pushed to $1"
         ;;
+    list)
+        ssh "$(echo "$1" | sed 's|:.*||')" \
+            -C "cd '$(echo "$1"|sed 's|^.*:||')'; ls -1" | sed 's/.tar$//'
+        ;;
     esac
 }
 
 prv_do() { #1: provider, prv_args...
+    trace "${3:+$3 }$2 $1"
     case "$1" in
     https://*|http://*) prv_handler_http "$@" ;;
     ssh://*) prv_handler_ssh "$@" ;;
@@ -129,6 +165,15 @@ pkg_do() { #prv_args...
 pkg_get() { pkg_do get "$1" || die "$1 could not be found"; }
 pkg_put() { pkg_do put "$1" || die "$1 could not be pushed"; }
 
+prv_sync() {
+    for prv in $RUPM_MIRRORLIST; do
+        mkdir -p "$(prv_meta "$prv")"
+        prv_do "$prv" list \
+            | sort -t. -k1,1 -k2,2n -k3,3n -k4,4n -k5,5n -k6,6n -k7,7n \
+            >"$(prv_meta "$prv" packages)";
+    done;
+}
+
 pkg_install() { #1: name
     debug "$1 is installing"
     for envkey in "$RUPM_PACKAGES/$1"/* "$RUPM_PACKAGES/$1"/.[!.]* \
@@ -142,6 +187,15 @@ pkg_install() { #1: name
 }
 
 pkg_assemble() { #1: name
+    if [ -f "$(pkg_meta "$1" revision)" ]; then
+        expr 1 + "$(pkg_meta_r "$1" revision)" \
+            >"$(pkg_meta "$1" revision)"
+    else
+        echo "0" >"$(pkg_meta "$1" revision)"
+    fi
+    [ -f "$(pkg_meta "$1" version)" ] || echo "0" >"$(pkg_meta "$1" version)"
+    [ -f "$(pkg_meta "$1" arch)" ] || echo "$ARCH" >"$(pkg_meta "$1" arch)"
+    [ -f "$(pkg_meta "$1" os)" ] || echo "$OS" >"$(pkg_meta "$1" os)"
     exec 9<"$(pkg_meta_f "$1" filelist)"
     while IFS= read -r file <&9; do
         cp_f "$(path_transform "$file")" "$RUPM_PACKAGES/$1/$file" "$1/$file"
@@ -156,17 +210,22 @@ pkg_remove() { #1: name
 }
 
 tasks=""
-while getopts vqSPR opt; do
+while getopts vqSyPR opt; do
     case $opt in
     v) verbosity="$(($verbosity + 1))" ;;
     q) verbosity="$(($verbosity - 1))" ;;
     S) tasks="$tasks pkg_get pkg_install" ;;
+    y) tasks="$tasks prv_sync" ;;
     P) tasks="$tasks pkg_assemble pkg_put" ;;
     R) tasks="$tasks pkg_remove" ;;
     esac
 done
 shift "$(($OPTIND - 1))"
 for task in $tasks; do
-    foreach $task "$@"
+    if echo "$task" | grep -q '^pkg'; then
+        trace "running task $task"
+        foreach $task "$@"
+    else
+        $task
+    fi
 done
-
