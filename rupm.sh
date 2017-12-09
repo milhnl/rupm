@@ -209,6 +209,7 @@ pkg_remove() { #1: name
         || die "$name could not be deleted."
 }
 
+cd "$HOME"
 tasks=""
 while getopts vqSyPR opt; do
     case $opt in
