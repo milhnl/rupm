@@ -64,8 +64,12 @@ realbase() { #1: path
     basename "$(echo "$1" | sed 's:/.$::')"
 }
 
+url_clean() { #1: url
+    echo "$1" | sed 's|://|_|;s|/|_|;'
+}
+
 prv_meta() { #1: prv, 2?: metafile
-    echo "$RUPM_PRVINFO/$(echo "$1" | sed 's|://|_|;s|/|_|;')${2:+/$2}"
+    echo "$RUPM_PRVINFO/$(url_clean "$1")${2:+/$2}"
 }
 
 prv_meta_f() { #1: prv, 2?: metafile
