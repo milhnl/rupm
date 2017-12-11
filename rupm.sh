@@ -77,6 +77,11 @@ prv_meta_f() { #1: prv, 2?: metafile
     prv_meta "$@"
 }
 
+prv_cache() { #1: prv, 2?: file
+    mkdir -p "$XDG_CACHE_HOME/$(url_clean "$1")"
+    echo "$XDG_CACHE_HOME/$(url_clean "$1")${2:+/$2}"
+}
+
 pkg_meta() { #1: name, 2?: metafile
     echo "$RUPM_PKGINFO/$1${2:+/$2}"
 }
@@ -102,16 +107,16 @@ pkg_mkident() { #1: name
 }
 
 prv_handler_http() { #1: uri, 2: verb, 3: name
-    tmp="$(tmp_get)"
-    
     [ "$verbosity" -ge "1" ] || curlopts="-s"
     case "$2" in
     get)
-        set -- "$1$(pkg_choose "$1" "$3").tar" "$2" "$3"
-        curl -N $curlopts --progress-bar --fail "$1" -o "$tmp" \
+        set -- "$@" "$(pkg_choose "$1" "$3")" #4: ident
+        set -- "$@" "$1$4.tar" #5: pkg_uri
+        set -- "$@" "$(prv_cache "$1" "$4.tar")" #6: cached_pkg
+        curl -N $curlopts --progress-bar --fail "$5" -o "$6" \
             && debug "$3 downloaded from $1" \
             && mkdir -p "$RUPM_PACKAGES/$3" \
-            && tar -C"$RUPM_PACKAGES/$3" -xf"$tmp"
+            && tar -C"$RUPM_PACKAGES/$3" -xf"$6"
         ;;
     put) return 1 ;;
     list)
@@ -123,24 +128,27 @@ prv_handler_http() { #1: uri, 2: verb, 3: name
 }
 
 prv_handler_ssh() { #1: uri, 2: verb, 3: name
-    tmp="$(tmp_get)"
     set -- "$(echo "$1" | sed 's|^ssh://||')" "$2" "$3"
 
     case "$2" in
     get)
-        set -- "$1$(pkg_choose "$1" "$3").tar" "$2" "$3"
-        scp "$1" "$tmp" \
+        set -- "$@" "$(pkg_choose "$1" "$3")" #4: ident
+        set -- "$@" "$1$4.tar" #5: pkg_uri
+        set -- "$@" "$(prv_cache "$1" "$4.tar")" #6: cached_pkg
+        scp "$5" "$6" \
             && debug "$3 downloaded from $1" \
             && mkdir -p "$RUPM_PACKAGES/$3" \
-            && tar -C"$RUPM_PACKAGES/$3" -xf"$tmp"
+            && tar -C"$RUPM_PACKAGES/$3" -xf"$6"
         ;;
     put)
-        set -- "$1$(pkg_mkident "$3").tar" "$2" "$3"
+        set -- "$@" "$(pkg_mkident "$3")" #4: ident
+        set -- "$@" "$1$4.tar" #5: pkg_uri
+        set -- "$@" "$(prv_cache "$1" "$4.tar")" #6: cached_pkg
         sort "$(pkg_meta_f "$3" filelist)" \
-            | (cd "$RUPM_PACKAGES/$3"; xargs -xd '\n' tar -cf "$tmp") \
-            && chmod 0644 "$tmp" \
-            && scp "$tmp" "$1" \
-            && rm -r "$tmp" "$RUPM_PACKAGES/$3" \
+            | (cd "$RUPM_PACKAGES/$3"; xargs -xd '\n' tar -cf "$6") \
+            && chmod 0644 "$6" \
+            && scp "$6" "$5" \
+            && rm -r "$RUPM_PACKAGES/$3" \
             && debug "$3 pushed to $1"
         ;;
     list)
