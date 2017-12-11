@@ -18,31 +18,19 @@ IDENTPRINT='%s.%s_%s-%s'
 ARCH="${ARCH:-$(uname -m)}"
 OS="${OS:-$(uname -s)}"
 verbosity="0"
-tmps=""
 
 trace() { [ "$verbosity" -ge "3" ] && printf '%s\n' "$*" >&2; true;}
 debug() { [ "$verbosity" -ge "2" ] && printf '%s\n' "$*" >&2; true;}
 info() { [ "$verbosity" -ge "1" ] && printf '%s\n' "$*" >&2; true;}
 warn() { [ "$verbosity" -ge "0" ] && printf '%s\n' "$*" >&2; true;}
 err() { [ "$verbosity" -ge "-1" ] && printf '%s\n' "$*" >&2; true;}
-die() { [ "$verbosity" -ge "-2" ] && printf '%s\n' "$*" >&2;
-    tmp_cleanup; exit 1; }
+die() { [ "$verbosity" -ge "-2" ] && printf '%s\n' "$*" >&2; exit 1; }
 
 foreach() {
     func="$1"; shift;
     for i in "$@"; do
         $func "$i"
     done
-}
-
-tmp_get() { #1: Optional -d flag for directory
-    file="$(mktemp "$@")"
-    tmps="$file $tmps"
-    echo "$file"
-}
-
-tmp_cleanup() {
-    rm -rf $tmps #This is just asking for trouble. Let's see
 }
 
 cp_f() { #1: source, 2: dest, 3: name (optional)
