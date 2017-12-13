@@ -203,9 +203,15 @@ pkg_assemble() { #1: name
 }
 
 pkg_edit() { #1: name
-    mkdir -p "$(pkg_meta "$1")"
-    "$EDITOR" "$(pkg_meta "$1" filelist)"
-    rmdir "$(pkg_meta "$1")" 2>/dev/null
+    set -- "$1" "$(pkg_meta "$1")" #2: pkgmeta
+    mkdir -p "$2"
+    (
+        cd "$2"
+        [ -e "filelist" ] || echo "\$RUPM_PKGINFO/$1" >"filelist"
+        "$EDITOR" "filelist"
+        [ -n "$(sed '/^\$RUPM_PKGINFO\/'"$1"'$/d' filelist)" ] || rm "filelist"
+    )
+    rmdir "$2" 2>/dev/null || true
 }
 
 pkg_remove() { #1: name
