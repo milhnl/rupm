@@ -33,6 +33,12 @@ foreach() {
     done
 }
 
+#POSIX xargs does not handle newline-separated files
+fargs() {
+    while IFS= read -r line; do set -- "$@" "$line"; done
+    "$@"
+}
+
 cp_f() { #1: source, 2: dest, 3: name (optional)
     trace "${3:-1} -> $2"
     mkdir -p "$(dirname "$2")"
@@ -133,7 +139,7 @@ prv_handler_ssh() { #1: uri, 2: verb, 3: name
         set -- "$@" "$1$4.tar" #5: pkg_uri
         set -- "$@" "$(prv_cache "$1" "$4.tar")" #6: cached_pkg
         sort "$(pkg_meta_f "$3" filelist)" \
-            | (cd "$RUPM_PACKAGES/$3"; xargs -xd '\n' tar -cf "$6") \
+            | (cd "$RUPM_PACKAGES/$3"; fargs tar -cf "$6") \
             && chmod 0644 "$6" \
             && scp "$6" "$5" \
             && rm -r "$RUPM_PACKAGES/$3" \
@@ -217,7 +223,7 @@ pkg_edit() { #1: name
 pkg_remove() { #1: name
     sed 's|/\.$||' <"$(pkg_meta_f "$1" filelist)" \
         | path_transform \
-        | xargs -d'\n' rm -r \
+        | fargs rm -r \
         || die "$name could not be deleted."
 }
 
