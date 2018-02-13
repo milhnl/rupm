@@ -4,7 +4,7 @@ VERSION = 0.1
 PREFIX ?= /usr/local
 
 SHSRC = rupm.sh
-SRC = ${SHSRC}
+SRC = ${SHSRC} bootstrap.sh
 
 all:
 	@echo "Only shell scripts, try 'make install' instead."
@@ -17,15 +17,11 @@ dist:
 	@gzip ${NAME}-${VERSION}.tar
 	@rm -rf ${NAME}-${VERSION}
 
-install: ${SHSRC}
-	@for f in ${SHSRC}; do \
-		cp -f $$f "${DESTDIR}${PREFIX}/bin/$${f%.*}"; \
-		chmod 755 "${DESTDIR}${PREFIX}/bin/$${f%.*}"; \
-	done
+install: rupm.sh
+	@cp -f rupm.sh "${DESTDIR}${PREFIX}/bin/rupm"
+	@chmod 755 "${DESTDIR}${PREFIX}/bin/rupm"
 
 uninstall:
-	@for $$f in ${SHSRC}; do \
-		rm -f "${DESTDIR}${PREFIX}/bin/$${f%.*}" \
-	done
+	@rm -f "${DESTDIR}${PREFIX}/bin/rupm" \
 
 .PHONY: dist install uninstall
