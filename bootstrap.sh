@@ -1,8 +1,15 @@
 #!/usr/bin/env sh
+RUPM_MIRRORLIST="${RUPM_MIRRORLIST:-http://repo.milh.nl/}"
+
+export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+export XDG_CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}"
+export XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
+export PREFIX="${PREFIX:-$HOME/.local}"
+export RUPM_PKGINFO="${RUPM_PKGINFO:-$XDG_DATA_HOME/rupm/pkginfo}"
 
 rupm() {
     echo "Installing rupm..."
-    pkg="${RUPM_PACKAGES:-${XDG_CACHE_HOME:-$HOME/.cache}/rupm/packages}"
+    pkg="${RUPM_PACKAGES:-$XDG_CACHE_HOME/rupm/packages}"
     mkdir -p "$pkg"
     pkg="$pkg/rupm.tar"
     for repo in $RUPM_MIRRORLIST; do
@@ -27,7 +34,6 @@ rupm() {
     [ -s "$pkg" ] || { echo "Could not download rupm." >&2; return 1; }
     pkgdir="$(mktemp -d)"
     tar -C "$pkgdir" -xf "$pkg" || return 1
-    export RUPM_PKGINFO="${RUPM_PKGINFO:=$XDG_DATA_HOME/rupm/pkginfo}"
     mkdir -p "$RUPM_PKGINFO"
     for envkey in "$pkgdir"/* "$pkgdir"/.[!.]* "$pkgdir"/..?* ; do
         [ -e "$envkey" ] || continue
