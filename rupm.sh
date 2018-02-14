@@ -1,23 +1,34 @@
 #!/usr/bin/env sh
 #rupm - relocatable user package manager
 
-#Default values for used environment variables
-export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
-export XDG_CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}"
-export XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
-export PREFIX="${PREFIX:-$HOME/.local}"
-export BINDIR="${BINDIR:-$PREFIX/bin}"
-export LIBDIR="${LIBDIR:-$PREFIX/lib}"
-export MANDIR="${MANDIR:-$XDG_DATA_HOME/man}"
 
-export RUPM_PKGINFO="${RUPM_PKGINFO:-$XDG_DATA_HOME/rupm/pkginfo}"
-export RUPM_PRVINFO="${RUPM_PRVINFO:-$XDG_DATA_HOME/rupm/prv}"
-RUPM_PACKAGES="${RUPM_PACKAGES:-$XDG_CACHE_HOME/rupm/packages}"
+set -a
+ARCH="${ARCH:-$(uname -m)}"
+OS="${OS:-$(uname -s)}"
+if [ "$OS" = Darwin ]; then
+    XDG_CONFIG_HOME="${XDG_CONFIG_HOME-$HOME/Library/Application Support}"
+    XDG_DATA_HOME="${XDG_DATA_HOME-$HOME/Library/Local/share}"
+    XDG_CACHE_HOME="${XDG_CACHE_HOME-$HOME/Library/Caches}"
+    MACOS_LIBRARY="${MACOS_LIBRARY-$HOME/Library}"
+    PREFIX="${PREFIX-$HOME/Library/Local}"
+else
+    XDG_CONFIG_HOME="${XDG_CONFIG_HOME-$HOME/.config}"
+    XDG_DATA_HOME="${XDG_DATA_HOME-$HOME/.local/share}"
+    XDG_CACHE_HOME="${XDG_CACHE_HOME-$HOME/.cache}"
+    PREFIX="${PREFIX-$HOME/.local}"
+fi
+BINDIR="${BINDIR-$PREFIX/bin}"
+LIBDIR="${LIBDIR-$PREFIX/lib}"
+MANDIR="${MANDIR-$XDG_DATA_HOME/man}"
+
+RUPM_PKGINFO="${RUPM_PKGINFO-$XDG_DATA_HOME/rupm/pkginfo}"
+RUPM_PRVINFO="${RUPM_PRVINFO-$XDG_DATA_HOME/rupm/prv}"
+set +a
+
+RUPM_PACKAGES="${RUPM_PACKAGES-$XDG_CACHE_HOME/rupm/packages}"
 IDENTREGEX='[A-Za-z-]*.[A-Za-z0-9_.]*_[A-Za-z0-9_]*-[A-Za-z0-9_-]*'
 IDENTPRINT='%s.%s_%s-%s'
 
-ARCH="${ARCH:-$(uname -m)}"
-OS="${OS:-$(uname -s)}"
 verbosity="0"
 
 trace() { [ "$verbosity" -ge "3" ] && printf '%s\n' "$*" >&2; true;}
