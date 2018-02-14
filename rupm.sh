@@ -216,6 +216,7 @@ pkg_assemble() { #1: name
     [ -f "$(pkg_meta "$1" os)" ] || echo "$OS" >"$(pkg_meta "$1" os)"
     exec 9<"$(pkg_meta_f "$1" filelist)"
     while IFS= read -r file <&9; do
+        [ -d "$(path_transform "$file")" ] && file="$file/."
         cp_f "$(path_transform "$file")" "$RUPM_PACKAGES/$1/$file" "$1/$file"
     done
 }
