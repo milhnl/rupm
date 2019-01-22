@@ -23,8 +23,9 @@ rupm() {
                 | tail -n1)" -o "$pkg" && break
             ;;
         ssh://*)
-            scp "(ssh "$(echo "$repo" | sed 's/.*:\(.*\):.*/\1/')" \
-                -C "cd '$(echo "$repo"|sed 's/.*:.*:/')'; ls -1" \
+            scp "$(echo "$repo" | sed 's|^ssh://||')$(ssh \
+                    "$(echo "$repo" | sed 's|^ssh://\(.*\):.*|\1|')" \
+                    -C "cd '$(echo "$repo"|sed 's/.*:.*://')'; ls -1" \
                 | grep '^rupm' \
                 | sort -t. -k1,1 -k2,2n -k3,3n -k4,4n -k5,5n -k6,6n -k7,7n\
                 | tail -n1)" "$pkg" && break
