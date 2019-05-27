@@ -138,7 +138,7 @@ prv_handler_ssh() { #1: uri, 2: verb, 3: name
 
     case "$2" in
     get)
-        set -- "$@" "$(pkg_choose "$1" "$3")" #4: ident
+        set -- "$@" "$(pkg_choose "ssh://$1" "$3")" #4: ident
         set -- "$@" "$1$4.tar" #5: pkg_uri
         set -- "$@" "$(prv_cache "$1" "$4.tar")" #6: cached_pkg
         scp "$5" "$6" \
