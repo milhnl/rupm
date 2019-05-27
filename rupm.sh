@@ -84,8 +84,8 @@ prv_meta_f() { #1: prv, 2?: metafile
 }
 
 prv_cache() { #1: prv, 2?: file
-    mkdir -p "$XDG_CACHE_HOME/$(url_clean "$1")"
-    echo "$XDG_CACHE_HOME/$(url_clean "$1")${2:+/$2}"
+    mkdir -p "$XDG_CACHE_HOME/rupm/$(url_clean "$1")"
+    echo "$XDG_CACHE_HOME/rupm/$(url_clean "$1")${2:+/$2}"
 }
 
 pkg_meta() { #1: name, 2?: metafile
@@ -140,7 +140,7 @@ prv_handler_ssh() { #1: uri, 2: verb, 3: name
     get)
         set -- "$@" "$(pkg_choose "ssh://$1" "$3")" #4: ident
         set -- "$@" "$1$4.tar" #5: pkg_uri
-        set -- "$@" "$(prv_cache "$1" "$4.tar")" #6: cached_pkg
+        set -- "$@" "$(prv_cache "ssh://$1" "$4.tar")" #6: cached_pkg
         scp "$5" "$6" \
             && debug "$3 downloaded from $1" \
             && mkdir -p "$RUPM_PACKAGES/$3" \
@@ -149,7 +149,7 @@ prv_handler_ssh() { #1: uri, 2: verb, 3: name
     put)
         set -- "$@" "$(pkg_mkident "$3")" #4: ident
         set -- "$@" "$1$4.tar" #5: pkg_uri
-        set -- "$@" "$(prv_cache "$1" "$4.tar")" #6: cached_pkg
+        set -- "$@" "$(prv_cache "ssh://$1" "$4.tar")" #6: cached_pkg
         sort "$(pkg_meta_f "$3" filelist)" \
             | (cd "$RUPM_PACKAGES/$3"; fargs tar -cf "$6") \
             && chmod 0644 "$6" \
