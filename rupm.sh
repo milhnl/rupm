@@ -240,10 +240,14 @@ pkg_remove() { #1: name
         || die "$name could not be deleted."
 }
 
+rupm_query() {
+    ls -1 "$RUPM_PKGINFO"
+}
+
 cd "$HOME"
 tasks=""
 pkgs=""
-while getopts vquESyPR opt; do
+while getopts vquESyPRQ opt; do
     case $opt in
     v) verbosity="$(($verbosity + 1))" ;;
     q) verbosity="$(($verbosity - 1))" ;;
@@ -253,6 +257,7 @@ while getopts vquESyPR opt; do
     y) tasks="$tasks prv_sync" ;;
     P) tasks="$tasks pkg_assemble pkg_put" ;;
     R) tasks="$tasks pkg_remove" ;;
+    Q) tasks="$tasks rupm_query" ;;
     esac
 done
 shift "$(($OPTIND - 1))"
